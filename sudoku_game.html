@@ -152,6 +152,9 @@
         </div>
     </div>
     
+    <!-- ADD THIS HIDDEN INPUT for mobile keyboard support -->
+    <input type="tel" id="hidden-input" class="absolute -top-full -left-full">
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -168,7 +171,7 @@
             generate() {
                 this.solve(this.board); 
                 this.solution = JSON.parse(JSON.stringify(this.board));
-                let cellsToRemove = 20; let attempts = 0;
+                let cellsToRemove = 23; let attempts = 0; // Increased difficulty from 20 to 23
                 while (cellsToRemove > 0 && attempts < 100) {
                     let row = Math.floor(Math.random() * this.gridSize);
                     let col = Math.floor(Math.random() * this.gridSize);
@@ -232,6 +235,7 @@
         const timerDisplay = document.getElementById('timer');
         const cooldownModal = document.getElementById('cooldown-modal');
         const cooldownTimer = document.getElementById('cooldown-timer');
+        const hiddenInput = document.getElementById('hidden-input'); // Get the new hidden input
         
         // --- Firebase Setup ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-sudoku-app';
@@ -298,6 +302,10 @@
             if (selectedCell) selectedCell.classList.remove('selected');
             selectedCell = cell; selectedCell.classList.add('selected');
             highlightRelated(parseInt(cell.dataset.row), parseInt(cell.dataset.col));
+            
+            // Focus the hidden input to bring up the mobile keyboard
+            hiddenInput.value = '';
+            hiddenInput.focus();
         }
         
         function highlightRelated(row, col) {
@@ -429,22 +437,56 @@
         // --- Event Listeners & Initialization ---
         function getCell(row, col) { return document.querySelector(`.cell[data-row='${row}'][data-col='${col}']`); }
 
+        // Listener for the hidden input - this is the primary method for mobile keyboard entry
+        hiddenInput.addEventListener('input', (e) => {
+            if (!selectedCell || selectedCell.classList.contains('given')) {
+                e.target.value = '';
+                return;
+            }
+            // On some mobile keyboards, you might get more than one character. Only take the last one.
+            const value = e.target.value.slice(-1); 
+            if (value && value >= '1' && value <= '6') {
+                handleNumberInput(parseInt(value));
+            }
+            // Clear the input immediately after use so it's ready for the next input
+            e.target.value = '';
+        });
+
+
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('main-content').classList.contains('hidden') || !selectedCell) return;
+            if (document.getElementById('main-content').classList.contains('hidden')) return;
+            
+            // Allow keyboard input only if a cell is selected
+            if (!selectedCell) return;
+
             const key = e.key;
+
+            // Arrow Key Navigation (mostly for desktop)
             if (key.startsWith('Arrow')) {
                 e.preventDefault(); 
                 let r = parseInt(selectedCell.dataset.row), c = parseInt(selectedCell.dataset.col);
                 switch (key) {
-                    case 'ArrowUp': r=Math.max(0,r-1); break; case 'ArrowDown': r=Math.min(5,r+1); break;
-                    case 'ArrowLeft': c=Math.max(0,c-1); break; case 'ArrowRight': c=Math.min(5,c+1); break;
+                    case 'ArrowUp': r=Math.max(0,r-1); break;
+                    case 'ArrowDown': r=Math.min(5,r+1); break;
+                    case 'ArrowLeft': c=Math.max(0,c-1); break;
+                    case 'ArrowRight': c=Math.min(5,c+1); break;
                 }
-                const next = getCell(r, c); if (next) selectCell(next);
+                const next = getCell(r, c); 
+                if (next) {
+                    selectCell(next);
+                }
                 return;
             }
-            if (selectedCell.classList.contains('given')) return;
-            if (key >= '1' && key <= '6') { handleNumberInput(parseInt(key)); } 
-            else if (key === 'Backspace' || key === 'Delete') { handleNumberInput(0); }
+            
+            // Deletion (for both desktop and mobile keyboards)
+            if ((key === 'Backspace' || key === 'Delete') && !selectedCell.classList.contains('given')) {
+                handleNumberInput(0);
+            }
+
+            // Number input from physical keyboard (desktop)
+            if (key >= '1' && key <= '6' && !selectedCell.classList.contains('given')) {
+                handleNumberInput(parseInt(key));
+            }
         });
 
         document.getElementById('start-game-btn').addEventListener('click', () => {
@@ -491,4 +533,6 @@
 
 </body>
 </html>
+
+
 
