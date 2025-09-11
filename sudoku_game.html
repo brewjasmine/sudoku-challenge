@@ -90,10 +90,23 @@
                 <p class="text-sm text-gray-400">Your Time:</p>
                 <p id="win-time" class="text-3xl font-bold text-white"></p>
             </div>
-            <button id="play-again-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Play Again</button>
+            <p class="text-gray-400 text-sm mb-4">You can play again in 2 hours.</p>
+            <button id="close-win-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Close</button>
         </div>
     </div>
     
+    <!-- Cooldown Modal -->
+    <div id="cooldown-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-2 text-blue-400">Please Wait</h2>
+            <p class="mb-4 text-gray-300">You can play your next game in:</p>
+            <div class="bg-gray-700 rounded-lg p-4 mb-6">
+                <p id="cooldown-timer" class="text-3xl font-bold text-white">--:--</p>
+            </div>
+            <button id="close-cooldown-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Close</button>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="w-full max-w-7xl mx-auto hidden" id="main-content">
         <header class="text-center mb-6">
@@ -148,119 +161,78 @@
         // --- Mini Sudoku 6x6 Logic ---
         class MiniSudokuGenerator {
             constructor() {
-                this.gridSize = 6;
-                this.boxWidth = 3;
-                this.boxHeight = 2;
+                this.gridSize = 6; this.boxWidth = 3; this.boxHeight = 2;
                 this.board = Array(this.gridSize).fill(0).map(() => Array(this.gridSize).fill(0));
                 this.solution = [];
             }
-
             generate() {
                 this.solve(this.board); 
                 this.solution = JSON.parse(JSON.stringify(this.board));
-
-                let cellsToRemove = 20; // "Challenge" difficulty
-                let attempts = 0;
+                let cellsToRemove = 20; let attempts = 0;
                 while (cellsToRemove > 0 && attempts < 100) {
                     let row = Math.floor(Math.random() * this.gridSize);
                     let col = Math.floor(Math.random() * this.gridSize);
-
                     if (this.board[row][col] !== 0) {
                         let backup = this.board[row][col];
                         this.board[row][col] = 0;
-                        
-                        let tempBoard = JSON.parse(JSON.stringify(this.board));
-                        if (this.countSolutions(tempBoard) !== 1) {
+                        if (this.countSolutions(JSON.parse(JSON.stringify(this.board))) !== 1) {
                             this.board[row][col] = backup;
-                        } else {
-                            cellsToRemove--;
-                        }
+                        } else { cellsToRemove--; }
                     }
                     attempts++;
                 }
                 return { puzzle: this.board, solution: this.solution };
             }
-
             solve(board) {
-                for (let row = 0; row < this.gridSize; row++) {
-                    for (let col = 0; col < this.gridSize; col++) {
-                        if (board[row][col] === 0) {
-                            let numbers = this.shuffle([1, 2, 3, 4, 5, 6]);
-                            for (let num of numbers) {
-                                if (this.isSafe(board, row, col, num)) {
-                                    board[row][col] = num;
-                                    if (this.solve(board)) return true;
-                                    board[row][col] = 0;
-                                }
+                for (let r=0; r<this.gridSize; r++) { for (let c=0; c<this.gridSize; c++) {
+                    if (board[r][c] === 0) {
+                        let nums = this.shuffle([1,2,3,4,5,6]);
+                        for (let num of nums) {
+                            if (this.isSafe(board,r,c,num)) {
+                                board[r][c] = num;
+                                if (this.solve(board)) return true;
+                                board[r][c] = 0;
                             }
-                            return false;
                         }
+                        return false;
                     }
-                }
+                }}
                 return true;
             }
-
             countSolutions(board) {
                 let count = 0;
-                const solveCounter = (b) => {
+                const counter = (b) => {
                     if (count >= 2) return;
-                    for (let row = 0; row < this.gridSize; row++) {
-                        for (let col = 0; col < this.gridSize; col++) {
-                            if (b[row][col] === 0) {
-                                for (let num = 1; num <= this.gridSize; num++) {
-                                    if (this.isSafe(b, row, col, num)) {
-                                        b[row][col] = num;
-                                        solveCounter(b);
-                                        b[row][col] = 0;
-                                    }
-                                }
-                                return;
+                    for (let r=0; r<this.gridSize; r++) { for (let c=0; c<this.gridSize; c++) {
+                        if (b[r][c] === 0) {
+                            for (let num=1; num<=this.gridSize; num++) {
+                                if (this.isSafe(b,r,c,num)) { b[r][c]=num; counter(b); b[r][c]=0; }
                             }
+                            return;
                         }
-                    }
+                    }}
                     count++;
                 };
-                solveCounter(board);
+                counter(board);
                 return count;
             }
-
-            isSafe(board, row, col, num) {
-                for (let x = 0; x < this.gridSize; x++) {
-                    if (board[row][x] === num || board[x][col] === num) return false;
-                }
-                const startRow = row - row % this.boxHeight;
-                const startCol = col - col % this.boxWidth;
-                for (let i = 0; i < this.boxHeight; i++) {
-                    for (let j = 0; j < this.boxWidth; j++) {
-                        if (board[i + startRow][j + startCol] === num) return false;
-                    }
-                }
+            isSafe(b,r,c,n) {
+                for(let x=0; x<this.gridSize; x++){ if(b[r][x]===n || b[x][c]===n) return false; }
+                const sr=r-r%this.boxHeight, sc=c-c%this.boxWidth;
+                for(let i=0; i<this.boxHeight; i++){ for(let j=0; j<this.boxWidth; j++){ if(b[i+sr][j+sc]===n) return false; }}
                 return true;
             }
-            
-            shuffle(array) {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-                return array;
-            }
+            shuffle(a) { for(let i=a.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
         }
 
         // --- UI & Game State ---
-        let db;
-        let auth;
-        let playerName = '';
-        let timerInterval;
-        let timeElapsed = 0;
-        let boardState = [];
-        let solutionState = [];
-        let selectedCell = null;
-
+        let db, auth, playerName = '', timerInterval, timeElapsed = 0, boardState = [], solutionState = [], selectedCell = null, cooldownInterval;
         const grid = document.getElementById('sudoku-grid');
         const numberControls = document.getElementById('number-controls');
         const timerDisplay = document.getElementById('timer');
-
+        const cooldownModal = document.getElementById('cooldown-modal');
+        const cooldownTimer = document.getElementById('cooldown-timer');
+        
         // --- Firebase Setup ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-sudoku-app';
         let firebaseConfig = {
@@ -271,29 +243,20 @@
   messagingSenderId: "52784227227",
   appId: "1:52784227227:web:a3ebc68717299a1d50f73e"
 };
-        try {
-            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        } catch (e) {
-            console.error("Firebase config is not valid JSON:", e);
-        }
+        try { firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}'); } 
+        catch (e) { console.error("Firebase config is not valid JSON:", e); }
 
         async function initializeFirebase() {
              if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                 console.error("Firebase config is missing or empty. Leaderboard will be disabled.");
-                document.getElementById('leaderboard-loading').textContent = '';
+                document.getElementById('leaderboard-loading').textContent = 'Leaderboard is disabled (missing config).';
                 return;
             }
             try {
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('debug');
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                db = getFirestore(app); auth = getAuth(app); setLogLevel('debug');
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } 
+                else { await signInAnonymously(auth); }
                 console.log("Firebase initialized and user signed in.");
                 setupLeaderboardListener();
             } catch (error) {
@@ -317,17 +280,10 @@
             for (let i = 0; i < 36; i++) {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
-                const row = Math.floor(i / 6);
-                const col = i % 6;
-
-                // Add block coloring class
-                const boxRow = Math.floor(row / 2);
-                const boxCol = Math.floor(col / 3);
+                const row = Math.floor(i / 6); const col = i % 6;
+                const boxRow = Math.floor(row / 2); const boxCol = Math.floor(col / 3);
                 cell.classList.add((boxRow + boxCol) % 2 === 0 ? 'box-color-1' : 'box-color-2');
-                
-                cell.dataset.row = row;
-                cell.dataset.col = col;
-                
+                cell.dataset.row = row; cell.dataset.col = col;
                 if (board[row][col] !== 0) {
                     cell.textContent = board[row][col];
                     cell.classList.add('given');
@@ -340,36 +296,24 @@
 
         function selectCell(cell) {
             if (selectedCell) selectedCell.classList.remove('selected');
-            selectedCell = cell;
-            selectedCell.classList.add('selected');
+            selectedCell = cell; selectedCell.classList.add('selected');
             highlightRelated(parseInt(cell.dataset.row), parseInt(cell.dataset.col));
         }
         
         function highlightRelated(row, col) {
             document.querySelectorAll('.cell.highlighted').forEach(c => c.classList.remove('highlighted'));
-            for (let i = 0; i < 6; i++) {
-                getCell(row, i).classList.add('highlighted');
-                getCell(i, col).classList.add('highlighted');
-            }
-            const startRow = row - row % 2;
-            const startCol = col - col % 3;
-            for(let i=0; i<2; i++){ for(let j=0; j<3; j++){ getCell(startRow+i, startCol+j).classList.add('highlighted'); } }
+            for (let i=0; i<6; i++) { getCell(row, i).classList.add('highlighted'); getCell(i, col).classList.add('highlighted'); }
+            const sr=row-row%2, sc=col-col%3;
+            for(let i=0; i<2; i++){ for(let j=0; j<3; j++){ getCell(sr+i, sc+j).classList.add('highlighted'); } }
         }
 
         function handleNumberInput(num) {
             if (!selectedCell) return;
-            
-            const row = parseInt(selectedCell.dataset.row);
-            const col = parseInt(selectedCell.dataset.col);
-
-            if (num === 0) {
-                selectedCell.textContent = '';
-                boardState[row][col] = 0;
-            } else {
-                selectedCell.textContent = num;
-                boardState[row][col] = num;
-                
-                if (num !== solutionState[row][col]) {
+            const r = parseInt(selectedCell.dataset.row); const c = parseInt(selectedCell.dataset.col);
+            if (num === 0) { selectedCell.textContent = ''; boardState[r][c] = 0; } 
+            else {
+                selectedCell.textContent = num; boardState[r][c] = num;
+                if (num !== solutionState[r][c]) {
                      selectedCell.classList.add('error');
                      setTimeout(() => selectedCell.classList.remove('error'), 1000);
                 }
@@ -378,16 +322,13 @@
         }
         
         function checkWinCondition() {
-            for (let r = 0; r < 6; r++) {
-                for (let c = 0; c < 6; c++) {
-                    if (boardState[r][c] !== solutionState[r][c]) return;
-                }
-            }
+            for (let r=0; r<6; r++) { for (let c=0; c<6; c++) { if (boardState[r][c] !== solutionState[r][c]) return; } }
             winGame();
         }
 
         async function winGame() {
             stopTimer();
+            localStorage.setItem('sudokuLastPlayTime', Date.now().toString());
             document.getElementById('win-time').textContent = formatTime(timeElapsed);
             document.getElementById('win-modal').classList.remove('hidden');
             document.getElementById('win-modal').classList.add('flex');
@@ -410,54 +351,74 @@
             return `${min}:${sec}`;
         }
         
+        // --- Cooldown Logic ---
+        function checkCooldownAndStart() {
+            const lastPlayTime = localStorage.getItem('sudokuLastPlayTime');
+            if (!lastPlayTime) {
+                startGame();
+                return;
+            }
+            
+            const twoHours = 2 * 60 * 60 * 1000;
+            const timeSinceLastPlay = Date.now() - parseInt(lastPlayTime);
+
+            if (timeSinceLastPlay < twoHours) {
+                showCooldownModal(twoHours - timeSinceLastPlay);
+            } else {
+                startGame();
+            }
+        }
+
+        function showCooldownModal(timeLeft) {
+            cooldownModal.classList.remove('hidden');
+            cooldownModal.classList.add('flex');
+            
+            if (cooldownInterval) clearInterval(cooldownInterval);
+
+            const updateTimer = () => {
+                timeLeft -= 1000;
+                if (timeLeft <= 0) {
+                    clearInterval(cooldownInterval);
+                    cooldownTimer.textContent = "00:00";
+                    cooldownModal.classList.add('hidden');
+                    cooldownModal.classList.remove('flex');
+                } else {
+                    const totalSeconds = Math.floor(timeLeft / 1000);
+                    const hours = Math.floor(totalSeconds / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    const seconds = totalSeconds % 60;
+                    cooldownTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            };
+            updateTimer();
+            cooldownInterval = setInterval(updateTimer, 1000);
+        }
+
         // --- Leaderboard Functions ---
         async function submitScore(name, time) {
             if (!db) return;
             try {
                 const scoresCollection = collection(db, `artifacts/${appId}/public/data/scores_6x6`);
-                await addDoc(scoresCollection, {
-                    name: name,
-                    time: time,
-                    difficulty: "challenge",
-                    createdAt: serverTimestamp()
-                });
+                await addDoc(scoresCollection, { name, time, difficulty: "challenge", createdAt: serverTimestamp() });
                 console.log("Score submitted successfully!");
-            } catch (error) {
-                console.error("Error submitting score: ", error);
-            }
+            } catch (error) { console.error("Error submitting score: ", error); }
         }
         
         function setupLeaderboardListener() {
             if (!db) return;
             const scoresCollection = collection(db, `artifacts/${appId}/public/data/scores_6x6`);
             const q = query(scoresCollection, orderBy("time", "asc"));
-
-            onSnapshot(q, (querySnapshot) => {
-                const leaderboardContainer = document.getElementById('leaderboard-container');
-                leaderboardContainer.innerHTML = '';
-                
-                if (querySnapshot.empty) {
-                    leaderboardContainer.innerHTML = '<p class="text-center text-gray-400">No one is on the leaderboard yet. Be the first!</p>';
-                    return;
-                }
-                
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('leaderboard-container');
+                container.innerHTML = '';
+                if (snapshot.empty) { container.innerHTML = '<p class="text-center text-gray-400">No one is on the leaderboard yet. Be the first!</p>'; return; }
                 let rank = 1;
-                querySnapshot.forEach((doc) => {
+                snapshot.forEach((doc) => {
                     const data = doc.data();
                     const entry = document.createElement('div');
                     entry.className = 'flex items-center justify-between p-2 bg-gray-700 rounded-md';
-                    
-                    entry.innerHTML = `
-                        <div class="flex items-center">
-                            <span class="font-bold text-lg w-8">${rank}.</span>
-                            <div>
-                                <p class="font-semibold text-white">${data.name}</p>
-                            </div>
-                        </div>
-                        <p class="font-bold text-lg text-white">${formatTime(data.time)}</p>
-                    `;
-                    leaderboardContainer.appendChild(entry);
-                    rank++;
+                    entry.innerHTML = `<div class="flex items-center"><span class="font-bold text-lg w-8">${rank}.</span><div><p class="font-semibold text-white">${data.name}</p></div></div><p class="font-bold text-lg text-white">${formatTime(data.time)}</p>`;
+                    container.appendChild(entry); rank++;
                 });
             }, (error) => {
                  console.error("Error getting leaderboard: ", error);
@@ -469,64 +430,49 @@
         function getCell(row, col) { return document.querySelector(`.cell[data-row='${row}'][data-col='${col}']`); }
 
         document.addEventListener('keydown', (e) => {
-            // Do nothing if the game isn't active or no cell is selected
-            if (document.getElementById('main-content').classList.contains('hidden') || !selectedCell) {
+            if (document.getElementById('main-content').classList.contains('hidden') || !selectedCell) return;
+            const key = e.key;
+            if (key.startsWith('Arrow')) {
+                e.preventDefault(); 
+                let r = parseInt(selectedCell.dataset.row), c = parseInt(selectedCell.dataset.col);
+                switch (key) {
+                    case 'ArrowUp': r=Math.max(0,r-1); break; case 'ArrowDown': r=Math.min(5,r+1); break;
+                    case 'ArrowLeft': c=Math.max(0,c-1); break; case 'ArrowRight': c=Math.min(5,c+1); break;
+                }
+                const next = getCell(r, c); if (next) selectCell(next);
                 return;
             }
-
-            const key = e.key;
-
-            // Handle Arrow Key Navigation
-            if (key.startsWith('Arrow')) {
-                e.preventDefault(); // Prevent page scrolling
-                let row = parseInt(selectedCell.dataset.row);
-                let col = parseInt(selectedCell.dataset.col);
-
-                switch (key) {
-                    case 'ArrowUp':    row = Math.max(0, row - 1); break;
-                    case 'ArrowDown':  row = Math.min(5, row + 1); break;
-                    case 'ArrowLeft':  col = Math.max(0, col - 1); break;
-                    case 'ArrowRight': col = Math.min(5, col + 1); break;
-                }
-                
-                const nextCell = getCell(row, col);
-                if (nextCell) {
-                    selectCell(nextCell);
-                }
-                return; // Stop after handling navigation
-            }
-            
-            // Handle Number Input (only for non-given cells)
             if (selectedCell.classList.contains('given')) return;
-
-            if (key >= '1' && key <= '6') {
-                handleNumberInput(parseInt(key));
-            } else if (key === 'Backspace' || key === 'Delete') {
-                handleNumberInput(0);
-            }
+            if (key >= '1' && key <= '6') { handleNumberInput(parseInt(key)); } 
+            else if (key === 'Backspace' || key === 'Delete') { handleNumberInput(0); }
         });
 
         document.getElementById('start-game-btn').addEventListener('click', () => {
             const nameInput = document.getElementById('player-name-input');
-            if (nameInput.value.trim() === '') {
-                alert('Please enter your name!');
-                return;
-            }
+            if (nameInput.value.trim() === '') { alert('Please enter your name!'); return; }
             playerName = nameInput.value.trim();
             document.getElementById('name-modal').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
-            startGame();
+            checkCooldownAndStart();
+        });
+
+        document.getElementById('close-win-modal-btn').addEventListener('click', () => {
+             document.getElementById('win-modal').classList.add('hidden');
+             document.getElementById('win-modal').classList.remove('flex');
+        });
+         document.getElementById('close-cooldown-modal-btn').addEventListener('click', () => {
+             cooldownModal.classList.add('hidden');
+             cooldownModal.classList.remove('flex');
+             if (cooldownInterval) clearInterval(cooldownInterval);
         });
 
         document.getElementById('play-again-btn').addEventListener('click', () => {
             document.getElementById('win-modal').classList.add('hidden');
             document.getElementById('win-modal').classList.remove('flex');
-            startGame();
+            checkCooldownAndStart();
         });
-
-        document.getElementById('new-game-btn').addEventListener('click', () => startGame());
+        document.getElementById('new-game-btn').addEventListener('click', () => checkCooldownAndStart());
         
-        // Initialize Number Controls
         for (let i = 1; i <= 6; i++) {
             const btn = document.createElement('button');
             btn.textContent = i;
@@ -535,7 +481,7 @@
             numberControls.appendChild(btn);
         }
         const eraseBtn = document.createElement('button');
-        eraseBtn.innerHTML = '&#9003;'; // Erase symbol
+        eraseBtn.innerHTML = '&#9003;';
         eraseBtn.className = "number-control bg-red-700 hover:bg-red-600 rounded-md text-white font-bold flex items-center justify-center transition-colors";
         eraseBtn.addEventListener('click', () => handleNumberInput(0));
         numberControls.appendChild(eraseBtn);
@@ -545,7 +491,4 @@
 
 </body>
 </html>
-
-
-
 
