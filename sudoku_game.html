@@ -67,6 +67,13 @@
         .cell:nth-child(6n) { border-right: none; }
         .cell:nth-child(n+13):nth-child(-n+24) { border-top: 2px solid #4b5563; }
         .cell:nth-child(n+25):nth-child(-n+36) { border-top: 2px solid #4b5563; }
+
+        /* FIX: Hide on-screen number controls on mobile devices */
+        @media (max-width: 768px) {
+            #number-controls {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -526,13 +533,11 @@
         eraseBtn.innerHTML = '&#9003;';
         eraseBtn.className = "number-control bg-red-700 hover:bg-red-600 rounded-md text-white font-bold flex items-center justify-center transition-colors";
         eraseBtn.addEventListener('click', () => handleNumberInput(0));
-        numberControls.appendChild(eraseBtn);
+        numberControls.appendChild(btn);
         
         initializeFirebase();
     </script>
 
 </body>
 </html>
-
-
 
