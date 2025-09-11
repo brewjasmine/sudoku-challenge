@@ -117,7 +117,7 @@
                 <p class="text-sm" style="color: var(--text-secondary);">Your Time:</p>
                 <p id="win-time" class="text-3xl font-bold" style="color: var(--text-white);"></p>
             </div>
-            <p class="text-sm mb-4" style="color: var(--text-secondary);">You can play again in 2 hours.</p>
+            <p class="text-sm mb-4" style="color: var(--text-secondary);">You can play again in 5 minutes.</p>
             <button id="close-win-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Close</button>
         </div>
     </div>
@@ -326,7 +326,7 @@
                 return;
             }
             
-            const twoHours = 2 * 60 * 60 * 1000;
+            const twoHours = 5 * 60 * 1000;
             const timeSinceLastPlay = Date.now() - parseInt(lastPlayTime);
 
             if (timeSinceLastPlay < twoHours) {
@@ -486,4 +486,5 @@
 
 </body>
 </html>
+
 
