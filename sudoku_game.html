@@ -219,14 +219,14 @@
                 document.getElementById('leaderboard-loading').textContent = 'Leaderboard is disabled (missing config).';
                 return;
             }
-            generate() {
-                this.solve(this.board); 
-                this.solution = JSON.parse(JSON.stringify(this.board));
-                let cellsToRemove = 23; let attempts = 0; // Increased difficulty
-                while (cellsToRemove > 0 && attempts < 500) { // FIX: Increased attempts from 100 to 500 for more robust puzzle generation
-                    let row = Math.floor(Math.random() * this.gridSize);
-                    let col = Math.floor(Math.random() * this.gridSize);
-                    if (this.board[row][col] !== 0) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app); auth = getAuth(app); setLogLevel('debug');
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } 
+                else { await signInAnonymously(auth); }
+                console.log("Firebase initialized and user signed in.");
+                setupLeaderboardListener();
+            } catch (error) {
                 console.error("Error initializing Firebase:", error);
                 document.getElementById('leaderboard-loading').textContent = 'Error connecting to Leaderboard.';
             }
@@ -486,6 +486,7 @@
 
 </body>
 </html>
+
 
 
 
