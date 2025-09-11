@@ -187,7 +187,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         // --- Version ---
-        const APP_VERSION = "v1.6.0";
+        const APP_VERSION = "v1.5.0";
 
         // --- Mini Sudoku 6x6 Logic (condensed for brevity) ---
         class MiniSudokuGenerator{constructor(){this.gridSize=6;this.boxWidth=3;this.boxHeight=2;this.board=Array(this.gridSize).fill(0).map(()=>Array(this.gridSize).fill(0));this.solution=[]}generate(){this.solve(this.board);this.solution=JSON.parse(JSON.stringify(this.board));let e=23,t=0;for(;"e">0&&t<100;){let s=Math.floor(Math.random()*this.gridSize),o=Math.floor(Math.random()*this.gridSize);if(0!==this.board[s][o]){let i=this.board[s][o];this.board[s][o]=0,1!==this.countSolutions(JSON.parse(JSON.stringify(this.board)))?this.board[s][o]=i:e--}t++}return{puzzle:this.board,solution:this.solution}}solve(e){for(let t=0;t<this.gridSize;t++)for(let s=0;s<this.gridSize;s++)if(0===e[t][s]){let o=this.shuffle([1,2,3,4,5,6]);for(let i of o)if(this.isSafe(e,t,s,i)){if(e[t][s]=i,this.solve(e))return!0;e[t][s]=0}return!1}return!0}countSolutions(e){let t=0;return function s(o){if(!(t>=2)){for(let i=0;i<this.gridSize;i++)for(let r=0;r<this.gridSize;r++)if(0===o[i][r]){for(let l=1;l<=this.gridSize;l++)this.isSafe(o,i,r,l)&&(o[i][r]=l,s(o),o[i][r]=0);return}t++}}.bind(this)(e),t}isSafe(e,t,s,o){for(let i=0;i<this.gridSize;i++)if(e[t][i]===o||e[i][s]===o)return!1;const r=t-t%this.boxHeight,l=s-s%this.boxWidth;for(let n=0;n<this.boxHeight;n++)for(let a=0;a<this.boxWidth;a++)if(e[n+r][a+l]===o)return!1;return!0}shuffle(e){for(let t=e.length-1;t>0;t--){const s=Math.floor(Math.random()*(t+1));[e[t],e[s]]=[e[s],e[t]]}return e}}
@@ -219,14 +219,14 @@
                 document.getElementById('leaderboard-loading').textContent = 'Leaderboard is disabled (missing config).';
                 return;
             }
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app); auth = getAuth(app); setLogLevel('debug');
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } 
-                else { await signInAnonymously(auth); }
-                console.log("Firebase initialized and user signed in.");
-                setupLeaderboardListener();
-            } catch (error) {
+            generate() {
+                this.solve(this.board); 
+                this.solution = JSON.parse(JSON.stringify(this.board));
+                let cellsToRemove = 23; let attempts = 0; // Increased difficulty
+                while (cellsToRemove > 0 && attempts < 500) { // FIX: Increased attempts from 100 to 500 for more robust puzzle generation
+                    let row = Math.floor(Math.random() * this.gridSize);
+                    let col = Math.floor(Math.random() * this.gridSize);
+                    if (this.board[row][col] !== 0) {
                 console.error("Error initializing Firebase:", error);
                 document.getElementById('leaderboard-loading').textContent = 'Error connecting to Leaderboard.';
             }
@@ -486,5 +486,6 @@
 
 </body>
 </html>
+
 
 
