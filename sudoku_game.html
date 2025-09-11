@@ -9,10 +9,44 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
+        /* --- CSS Variables for Theming --- */
+        :root {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --bg-grid: #4b5563;
+            --bg-box-2: #2c3a4b;
+            --text-primary: #d1d5db;
+            --text-secondary: #9ca3af;
+            --text-given: #93c5fd;
+            --text-white: #ffffff;
+            --border-color: #4b5563;
+            --selection-bg: #3b82f6;
+            --selection-outline: #93c5fd;
+            --modal-bg: #1f2937;
+        }
+
+        body.light-theme {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e5e7eb;
+            --bg-grid: #9ca3af;
+            --bg-box-2: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-given: #1d4ed8;
+            --text-white: #111827;
+            --border-color: #9ca3af;
+            --selection-bg: #60a5fa;
+            --selection-outline: #3b82f6;
+            --modal-bg: #ffffff;
+        }
+
         body {
             font-family: 'Be Vietnam Pro', sans-serif;
-            background-color: #111827;
-            color: #d1d5db;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         #sudoku-grid {
             display: grid;
@@ -21,8 +55,8 @@
             width: 100%;
             max-width: 420px;
             aspect-ratio: 1 / 1;
-            background-color: #4b5563;
-            border: 2px solid #4b5563;
+            background-color: var(--bg-grid);
+            border: 2px solid var(--border-color);
         }
         .cell {
             display: flex;
@@ -35,73 +69,66 @@
             box-sizing: border-box; /* FIX: Ensures borders are included inside the cell's dimensions */
         }
         /* Block coloring */
-        .box-color-1 { background-color: #1f2937; }
-        .box-color-2 { background-color: #2c3a4b; }
+        .box-color-1 { background-color: var(--bg-secondary); }
+        .box-color-2 { background-color: var(--bg-box-2); }
         
-        .cell.given {
-            color: #93c5fd;
-            font-weight: 700;
-            cursor: not-allowed;
-        }
-        .cell.selected {
-            background-color: #3b82f6 !important; /* Blue selection */
-            outline: 2px solid #93c5fd;
-            z-index: 10;
-        }
-        .cell.highlighted {
-            background-color: #374151;
-        }
-        .cell.error {
-            color: #ef4444;
-        }
-        .number-control {
-            font-size: 1.5rem;
-            width: 48px;
-            height: 48px;
-        }
-        .modal-backdrop {
-            background-color: rgba(0,0,0,0.7);
-        }
+        .cell.given { color: var(--text-given); font-weight: 700; cursor: not-allowed; }
+        .cell.selected { background-color: var(--selection-bg) !important; outline: 2px solid var(--selection-outline); z-index: 10; }
+        .cell.highlighted { background-color: var(--bg-tertiary); }
+        .cell.error { color: #ef4444; }
+
+        .number-control { font-size: 1.5rem; width: 48px; height: 48px; }
+        .modal-backdrop { background-color: rgba(0,0,0,0.7); }
+        .modal-content { background-color: var(--modal-bg); }
+
         /* Border lines for 6x6 grid (3x2 boxes) */
-        .cell:nth-child(3n) { border-right: 2px solid #4b5563; }
+        .cell:nth-child(3n) { border-right: 2px solid var(--border-color); }
         .cell:nth-child(6n) { border-right: none; }
-        .cell:nth-child(n+13):nth-child(-n+24) { border-top: 2px solid #4b5563; }
-        .cell:nth-child(n+25):nth-child(-n+36) { border-top: 2px solid #4b5563; }
+        .cell:nth-child(n+13):nth-child(-n+24) { border-top: 2px solid var(--border-color); }
+        .cell:nth-child(n+25):nth-child(-n+36) { border-top: 2px solid var(--border-color); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
+    <!-- Theme Toggle Button -->
+    <div class="absolute top-4 right-4">
+        <button id="theme-toggle" class="p-2 rounded-full" style="background-color: var(--bg-tertiary); color: var(--text-secondary);" title="Toggle light/dark mode">
+            <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+        </button>
+    </div>
+
     <!-- Name Input Modal -->
     <div id="name-modal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
-            <h2 class="text-2xl font-bold mb-4 text-white">Welcome to the Mini Sudoku Challenge!</h2>
-            <p class="mb-6 text-gray-400">Enter your name to start and join the leaderboard.</p>
-            <input type="text" id="player-name-input" placeholder="Your Name..." class="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <div class="modal-content rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-4" style="color: var(--text-white);">Welcome to the Mini Sudoku Challenge!</h2>
+            <p class="mb-6" style="color: var(--text-secondary);">Enter your name to start and join the leaderboard.</p>
+            <input type="text" id="player-name-input" placeholder="Your Name..." class="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" style="background-color: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
             <button id="start-game-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md mt-4 transition-colors">Start Playing</button>
         </div>
     </div>
 
     <!-- Win Modal -->
     <div id="win-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+        <div class="modal-content rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
             <h2 class="text-2xl font-bold mb-2 text-yellow-400">🎉 Congratulations! 🎉</h2>
-            <p class="mb-4 text-gray-300">You've completed the challenge!</p>
-            <div class="bg-gray-700 rounded-lg p-4 mb-6">
-                <p class="text-sm text-gray-400">Your Time:</p>
-                <p id="win-time" class="text-3xl font-bold text-white"></p>
+            <p class="mb-4" style="color: var(--text-primary);">You've completed the challenge!</p>
+            <div class="rounded-lg p-4 mb-6" style="background-color: var(--bg-tertiary);">
+                <p class="text-sm" style="color: var(--text-secondary);">Your Time:</p>
+                <p id="win-time" class="text-3xl font-bold" style="color: var(--text-white);"></p>
             </div>
-            <p class="text-gray-400 text-sm mb-4">You can play again in 2 hours.</p>
+            <p class="text-sm mb-4" style="color: var(--text-secondary);">You can play again in 2 hours.</p>
             <button id="close-win-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Close</button>
         </div>
     </div>
     
     <!-- Cooldown Modal -->
     <div id="cooldown-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+        <div class="modal-content rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
             <h2 class="text-2xl font-bold mb-2 text-blue-400">Please Wait</h2>
-            <p class="mb-4 text-gray-300">You can play your next game in:</p>
-            <div class="bg-gray-700 rounded-lg p-4 mb-6">
-                <p id="cooldown-timer" class="text-3xl font-bold text-white">--:--</p>
+            <p class="mb-4" style="color: var(--text-primary);">You can play your next game in:</p>
+            <div class="rounded-lg p-4 mb-6" style="background-color: var(--bg-tertiary);">
+                <p id="cooldown-timer" class="text-3xl font-bold" style="color: var(--text-white);">--:--</p>
             </div>
             <button id="close-cooldown-modal-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Close</button>
         </div>
@@ -110,20 +137,21 @@
     <!-- Main Content -->
     <div class="w-full max-w-7xl mx-auto hidden" id="main-content">
         <header class="text-center mb-6">
-            <h1 class="text-4xl font-extrabold text-white">Mini Sudoku Challenge</h1>
-            <p class="text-gray-400">A logic warm-up by Bang Nguyen</p>
+            <h1 class="text-4xl font-extrabold" style="color: var(--text-white);">Mini Sudoku Challenge</h1>
+            <p style="color: var(--text-secondary);">A logic warm-up by Bang Nguyen</p>
+            <p id="version-label" class="text-xs mt-1" style="color: var(--text-secondary);"></p>
         </header>
 
         <div class="flex flex-col lg:flex-row gap-8">
             <!-- Game Section -->
             <main class="w-full lg:w-2/3 flex flex-col items-center">
-                <div class="w-full flex justify-between items-center mb-4 p-3 bg-gray-800 rounded-lg">
+                <div class="w-full flex justify-between items-center mb-4 p-3 rounded-lg" style="background-color: var(--bg-secondary);">
                     <div id="difficulty-controls" class="flex flex-wrap gap-2">
                         <button id="new-game-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-md text-sm transition-colors">New Challenge</button>
                     </div>
                     <div class="text-right">
-                         <p class="text-sm text-gray-400">Time</p>
-                         <p id="timer" class="text-2xl font-bold text-white">00:00</p>
+                         <p class="text-sm" style="color: var(--text-secondary);">Time</p>
+                         <p id="timer" class="text-2xl font-bold" style="color: var(--text-white);">00:00</p>
                     </div>
                 </div>
                 
@@ -135,14 +163,14 @@
             </main>
 
             <!-- Leaderboard & Rules Section -->
-            <aside class="w-full lg:w-1/3 bg-gray-800 p-6 rounded-lg">
-                <h2 class="text-2xl font-bold text-white mb-4 text-center border-b border-gray-700 pb-2">🏆 Leaderboard 🏆</h2>
+            <aside class="w-full lg:w-1/3 p-6 rounded-lg" style="background-color: var(--bg-secondary);">
+                <h2 class="text-2xl font-bold mb-4 text-center border-b pb-2" style="color: var(--text-white); border-color: var(--border-color);">🏆 Leaderboard 🏆</h2>
                 <div id="leaderboard-container" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 mb-6">
-                    <p id="leaderboard-loading" class="text-center text-gray-400">Loading leaderboard...</p>
+                    <p id="leaderboard-loading" class="text-center" style="color: var(--text-secondary);">Loading leaderboard...</p>
                 </div>
                 
-                <h3 class="text-xl font-bold text-white mb-2 text-center border-b border-gray-700 pb-2">📜 How to Play 📜</h3>
-                <ul class="text-sm text-gray-400 space-y-2 mt-4 list-disc list-inside">
+                <h3 class="text-xl font-bold mb-2 text-center border-b pb-2" style="color: var(--text-white); border-color: var(--border-color);">📜 How to Play 📜</h3>
+                <ul class="text-sm space-y-2 mt-4 list-disc list-inside" style="color: var(--text-secondary);">
                     <li>Fill the grid with numbers from 1 to 6.</li>
                     <li>Each number must appear exactly once in each row.</li>
                     <li>Each number must appear exactly once in each column.</li>
@@ -158,72 +186,11 @@
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        // --- Mini Sudoku 6x6 Logic ---
-        class MiniSudokuGenerator {
-            constructor() {
-                this.gridSize = 6; this.boxWidth = 3; this.boxHeight = 2;
-                this.board = Array(this.gridSize).fill(0).map(() => Array(this.gridSize).fill(0));
-                this.solution = [];
-            }
-            generate() {
-                this.solve(this.board); 
-                this.solution = JSON.parse(JSON.stringify(this.board));
-                let cellsToRemove = 23; let attempts = 0; // Increased difficulty
-                while (cellsToRemove > 0 && attempts < 100) {
-                    let row = Math.floor(Math.random() * this.gridSize);
-                    let col = Math.floor(Math.random() * this.gridSize);
-                    if (this.board[row][col] !== 0) {
-                        let backup = this.board[row][col];
-                        this.board[row][col] = 0;
-                        if (this.countSolutions(JSON.parse(JSON.stringify(this.board))) !== 1) {
-                            this.board[row][col] = backup;
-                        } else { cellsToRemove--; }
-                    }
-                    attempts++;
-                }
-                return { puzzle: this.board, solution: this.solution };
-            }
-            solve(board) {
-                for (let r=0; r<this.gridSize; r++) { for (let c=0; c<this.gridSize; c++) {
-                    if (board[r][c] === 0) {
-                        let nums = this.shuffle([1,2,3,4,5,6]);
-                        for (let num of nums) {
-                            if (this.isSafe(board,r,c,num)) {
-                                board[r][c] = num;
-                                if (this.solve(board)) return true;
-                                board[r][c] = 0;
-                            }
-                        }
-                        return false;
-                    }
-                }}
-                return true;
-            }
-            countSolutions(board) {
-                let count = 0;
-                const counter = (b) => {
-                    if (count >= 2) return;
-                    for (let r=0; r<this.gridSize; r++) { for (let c=0; c<this.gridSize; c++) {
-                        if (b[r][c] === 0) {
-                            for (let num=1; num<=this.gridSize; num++) {
-                                if (this.isSafe(b,r,c,num)) { b[r][c]=num; counter(b); b[r][c]=0; }
-                            }
-                            return;
-                        }
-                    }}
-                    count++;
-                };
-                counter(board);
-                return count;
-            }
-            isSafe(b,r,c,n) {
-                for(let x=0; x<this.gridSize; x++){ if(b[r][x]===n || b[x][c]===n) return false; }
-                const sr=r-r%this.boxHeight, sc=c-c%this.boxWidth;
-                for(let i=0; i<this.boxHeight; i++){ for(let j=0; j<this.boxWidth; j++){ if(b[i+sr][j+sc]===n) return false; }}
-                return true;
-            }
-            shuffle(a) { for(let i=a.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-        }
+        // --- Version ---
+        const APP_VERSION = "v1.5.0";
+
+        // --- Mini Sudoku 6x6 Logic (condensed for brevity) ---
+        class MiniSudokuGenerator{constructor(){this.gridSize=6;this.boxWidth=3;this.boxHeight=2;this.board=Array(this.gridSize).fill(0).map(()=>Array(this.gridSize).fill(0));this.solution=[]}generate(){this.solve(this.board);this.solution=JSON.parse(JSON.stringify(this.board));let e=23,t=0;for(;"e">0&&t<100;){let s=Math.floor(Math.random()*this.gridSize),o=Math.floor(Math.random()*this.gridSize);if(0!==this.board[s][o]){let i=this.board[s][o];this.board[s][o]=0,1!==this.countSolutions(JSON.parse(JSON.stringify(this.board)))?this.board[s][o]=i:e--}t++}return{puzzle:this.board,solution:this.solution}}solve(e){for(let t=0;t<this.gridSize;t++)for(let s=0;s<this.gridSize;s++)if(0===e[t][s]){let o=this.shuffle([1,2,3,4,5,6]);for(let i of o)if(this.isSafe(e,t,s,i)){if(e[t][s]=i,this.solve(e))return!0;e[t][s]=0}return!1}return!0}countSolutions(e){let t=0;return function s(o){if(!(t>=2)){for(let i=0;i<this.gridSize;i++)for(let r=0;r<this.gridSize;r++)if(0===o[i][r]){for(let l=1;l<=this.gridSize;l++)this.isSafe(o,i,r,l)&&(o[i][r]=l,s(o),o[i][r]=0);return}t++}}.bind(this)(e),t}isSafe(e,t,s,o){for(let i=0;i<this.gridSize;i++)if(e[t][i]===o||e[i][s]===o)return!1;const r=t-t%this.boxHeight,l=s-s%this.boxWidth;for(let n=0;n<this.boxHeight;n++)for(let a=0;a<this.boxWidth;a++)if(e[n+r][a+l]===o)return!1;return!0}shuffle(e){for(let t=e.length-1;t>0;t--){const s=Math.floor(Math.random()*(t+1));[e[t],e[s]]=[e[s],e[t]]}return e}}
 
         // --- UI & Game State ---
         let db, auth, playerName = '', timerInterval, timeElapsed = 0, boardState = [], solutionState = [], selectedCell = null, cooldownInterval;
@@ -411,13 +378,14 @@
             onSnapshot(q, (snapshot) => {
                 const container = document.getElementById('leaderboard-container');
                 container.innerHTML = '';
-                if (snapshot.empty) { container.innerHTML = '<p class="text-center text-gray-400">No one is on the leaderboard yet. Be the first!</p>'; return; }
+                if (snapshot.empty) { container.innerHTML = '<p class="text-center" style="color: var(--text-secondary);">No one is on the leaderboard yet. Be the first!</p>'; return; }
                 let rank = 1;
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const entry = document.createElement('div');
-                    entry.className = 'flex items-center justify-between p-2 bg-gray-700 rounded-md';
-                    entry.innerHTML = `<div class="flex items-center"><span class="font-bold text-lg w-8">${rank}.</span><div><p class="font-semibold text-white">${data.name}</p></div></div><p class="font-bold text-lg text-white">${formatTime(data.time)}</p>`;
+                    entry.className = 'flex items-center justify-between p-2 rounded-md';
+                    entry.style.backgroundColor = 'var(--bg-tertiary)';
+                    entry.innerHTML = `<div class="flex items-center"><span class="font-bold text-lg w-8">${rank}.</span><div><p class="font-semibold" style="color: var(--text-white);">${data.name}</p></div></div><p class="font-bold text-lg" style="color: var(--text-white);">${formatTime(data.time)}</p>`;
                     container.appendChild(entry); rank++;
                 });
             }, (error) => {
@@ -431,7 +399,6 @@
 
         document.addEventListener('keydown', (e) => {
             if (document.getElementById('main-content').classList.contains('hidden') || !selectedCell) return;
-            
             const key = e.key;
             if (key.startsWith('Arrow')) {
                 e.preventDefault(); 
@@ -472,7 +439,9 @@
         for (let i = 1; i <= 6; i++) {
             const btn = document.createElement('button');
             btn.textContent = i;
-            btn.className = "number-control bg-gray-700 hover:bg-gray-600 rounded-md text-white font-bold flex items-center justify-center transition-colors";
+            btn.className = "number-control rounded-md font-bold flex items-center justify-center transition-colors";
+            btn.style.backgroundColor = 'var(--bg-tertiary)';
+            btn.style.color = 'var(--text-white)';
             btn.addEventListener('click', () => handleNumberInput(i));
             numberControls.appendChild(btn);
         }
@@ -481,7 +450,37 @@
         eraseBtn.className = "number-control bg-red-700 hover:bg-red-600 rounded-md text-white font-bold flex items-center justify-center transition-colors";
         eraseBtn.addEventListener('click', () => handleNumberInput(0));
         numberControls.appendChild(eraseBtn);
+
+        // --- Theme Toggle Logic ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
+
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                document.body.classList.add('light-theme');
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            } else {
+                document.body.classList.remove('light-theme');
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            }
+        };
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('sudoku_theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('sudoku_theme', newTheme);
+            applyTheme(newTheme);
+        });
         
+        // Load saved theme on startup
+        applyTheme(localStorage.getItem('sudoku_theme') || 'dark');
+        
+        // Set Version Label
+        document.getElementById('version-label').textContent = APP_VERSION;
+
         initializeFirebase();
     </script>
 
