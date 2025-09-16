@@ -239,7 +239,7 @@
         }
 
         function shareResult() {
-            const shareText = `Tôi đã giải được Thử Thách Pinpoint! 🧠\n\nChủ đề: ${currentPuzzle.category}\nKết quả: ${resultGridEl.textContent}\n\nThử thách bản thân tại đây: [dán link game của bạn vào đây]`;
+            const shareText = `Tôi đã giải được Thử Thách Pinpoint! 🧠\n\nChủ đề: ${currentPuzzle.category}\nKết quả: ${resultGridEl.textContent}\n\nThử thách bản thân tại đây: https://brewjasmine.github.io/sudoku-challenge/pinpoint.html`; // FIX: Corrected typo from "pinpoit" to "pinpoint"
             navigator.clipboard.writeText(shareText).then(() => {
                 shareButtonEl.textContent = 'Đã sao chép!';
                 setTimeout(() => { shareButtonEl.textContent = 'Sao chép & Chia sẻ'; }, 2000);
@@ -256,4 +256,5 @@
     </script>
 </body>
 </html>
+
 
