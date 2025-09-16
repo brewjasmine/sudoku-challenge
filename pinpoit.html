@@ -64,11 +64,12 @@
             </div>
 
             <!-- Action Buttons Container -->
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <div id="action-buttons" class="grid grid-cols-2 gap-2 mb-4">
                 <button id="reveal-clue-button" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors">Lật mở gợi ý</button>
-                <!-- NEW: Show Answer Button -->
                 <button id="show-answer-button" class="w-full bg-orange-200 hover:bg-orange-300 text-orange-800 font-bold py-2 px-4 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>Hiển thị đáp án</button>
             </div>
+            <!-- Next Puzzle Button (Initially Hidden) -->
+            <button id="next-puzzle-button" class="w-full hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg mb-4 transition-colors">Câu tiếp theo</button>
             
             <div id="feedback" class="text-center text-sm font-semibold mb-4 min-h-[20px]"></div>
             
@@ -119,7 +120,9 @@
         const shareButtonEl = document.getElementById('share-button');
         const revealClueButtonEl = document.getElementById('reveal-clue-button');
         const playAgainButtonEl = document.getElementById('play-again-button');
-        const showAnswerButtonEl = document.getElementById('show-answer-button'); // NEW: Get the answer button
+        const showAnswerButtonEl = document.getElementById('show-answer-button');
+        const nextPuzzleButtonEl = document.getElementById('next-puzzle-button');
+        const actionButtonsEl = document.getElementById('action-buttons');
 
         async function getNewPuzzle() {
             loadingModalEl.classList.remove('hidden');
@@ -127,7 +130,7 @@
             try {
                 const apiKey = "AIzaSyAdQojSqdgD3qollJhmSl-3emR88k7H9gQ"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra MỘT câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung (category, clues, answer) PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau: 1. **'category' (chủ đề) PHẢI là một câu hỏi về 'answer' (đáp án).** Ví dụ: nếu đáp án là "sơn tùng mtp", chủ đề phải là "CA SĨ NÀO?". 2. **'answer' (đáp án) PHẢI là từ khóa hoặc tên riêng duy nhất kết nối tất cả các gợi ý.** Phải là chữ thường, không dấu. 3. **5 'clues' (gợi ý) PHẢI nhất quán về mặt logic và cùng một loại.** Ví dụ: tất cả đều là bài hát, hoặc tất cả đều là thành phố. 4. **Tất cả nội dung phải là tiếng Việt.**`;
+                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra MỘT câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung (category, clues, answer) PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau: 1. **'category' (chủ đề) PHẢI là một câu hỏi về 'answer' (đáp án).** Ví dụ: nếu đáp án là "sơn tùng mtp", chủ đề phải là "CA SĨ NÀO?". 2. **'answer' (đáp án) PHẢI là từ khóa hoặc tên riêng duy nhất kết nối tất cả các gợi ý.** Phải là chữ thường, có dấu đầy đủ. 3. **5 'clues' (gợi ý) PHẢI nhất quán về mặt logic và cùng một loại.** Ví dụ: tất cả đều là bài hát, hoặc tất cả đều là thành phố. 4. **Tất cả nội dung phải là tiếng Việt.**`;
                 const userQuery = "Tạo một câu đố Pinpoint mới, chất lượng cao và tuân thủ tất cả các quy tắc.";
                 const payload = {
                     systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -160,12 +163,18 @@
             }} return m[b.length][a.length];
         }
 
+        function capitalize(str) {
+            return str.replace(/\b\w/g, char => char.toUpperCase());
+        }
+
         async function initGame() {
             currentPuzzle = await getNewPuzzle();
             revealedCluesCount = 1; wrongGuesses = [];
             winModalEl.classList.add('hidden'); winModalEl.classList.remove('flex');
             feedbackEl.textContent = ''; guessInputEl.value = ''; wrongGuessesEl.textContent = '';
             guessInputEl.disabled = false; guessButtonEl.disabled = false;
+            actionButtonsEl.classList.remove('hidden');
+            nextPuzzleButtonEl.classList.add('hidden');
             render();
         }
 
@@ -183,14 +192,11 @@
                 clueDiv.appendChild(clueText); cluesContainerEl.appendChild(clueDiv);
             });
             
-            // Update reveal and answer button states
             if(revealedCluesCount >= 5){
                 revealClueButtonEl.disabled=true; revealClueButtonEl.textContent="Đã hết gợi ý"; revealClueButtonEl.classList.add('opacity-50','cursor-not-allowed');
-                // NEW: Enable show answer button
                 showAnswerButtonEl.disabled = false; showAnswerButtonEl.classList.remove('opacity-50', 'cursor-not-allowed');
             } else {
                 revealClueButtonEl.disabled=false; revealClueButtonEl.textContent="Lật mở gợi ý"; revealClueButtonEl.classList.remove('opacity-50','cursor-not-allowed');
-                // NEW: Disable show answer button
                 showAnswerButtonEl.disabled = true; showAnswerButtonEl.classList.add('opacity-50', 'cursor-not-allowed');
             }
         }
@@ -216,14 +222,13 @@
 
         function handleRevealClue() { if (revealedCluesCount < 5) { revealedCluesCount++; render(); } }
 
-        // NEW: Function to handle showing the answer
         function handleShowAnswer() {
-            feedbackEl.innerHTML = `Đáp án là: <strong class="capitalize">${currentPuzzle.answer}</strong>`;
+            feedbackEl.innerHTML = `Đáp án là: <strong class="capitalize">${capitalize(currentPuzzle.answer)}</strong>`;
             feedbackEl.classList.add('text-green-600');
             guessInputEl.disabled = true;
             guessButtonEl.disabled = true;
-            revealClueButtonEl.disabled = true;
-            showAnswerButtonEl.disabled = true;
+            actionButtonsEl.classList.add('hidden');
+            nextPuzzleButtonEl.classList.remove('hidden');
         }
 
         function winGame() {
@@ -231,7 +236,9 @@
             for (let i = 0; i < 5; i++) { resultString += (i < revealedCluesCount) ? '🟩' : '⬜️'; }
             resultGridEl.textContent = resultString;
             winModalEl.classList.remove('hidden'); winModalEl.classList.add('flex');
-            guessInputEl.disabled = true; guessButtonEl.disabled = true; revealClueButtonEl.disabled = true;
+            guessInputEl.disabled = true;
+            guessButtonEl.disabled = true;
+            revealClueButtonEl.disabled = true;
             showAnswerButtonEl.disabled = true;
         }
 
@@ -248,7 +255,8 @@
         revealClueButtonEl.addEventListener('click', handleRevealClue);
         shareButtonEl.addEventListener('click', shareResult);
         playAgainButtonEl.addEventListener('click', initGame);
-        showAnswerButtonEl.addEventListener('click', handleShowAnswer); // NEW: Add event listener
+        showAnswerButtonEl.addEventListener('click', handleShowAnswer);
+        nextPuzzleButtonEl.addEventListener('click', initGame);
 
         initGame();
     </script>
