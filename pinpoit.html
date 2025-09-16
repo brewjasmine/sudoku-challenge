@@ -94,12 +94,33 @@
     
     <script>
         // Fallback puzzles in case the API fails
+        // FIX: Updated the fallback list to be high-quality and logically consistent
         const fallbackPuzzles = [
-            { category: "Things associated with THE NETHERLANDS", clues: ["Clogs", "Dikes", "Edam", "Windmills", "Tulips"], answer: "netherlands" },
-            { category: "Companies founded by STEVE JOBS", clues: ["Apple", "NeXT", "Pixar", "Macintosh", "iPhone"], answer: "steve jobs" },
-            { category: "Members of THE BEATLES", clues: ["John", "Paul", "George", "Ringo", "Liverpool"], answer: "the beatles" },
-            { category: "Things from LORD OF THE RINGS", clues: ["Hobbit", "Gollum", "Mordor", "Gandalf", "One Ring"], answer: "lord of the rings" },
-            { category: "Chemical elements named after SCIENTISTS", clues: ["Curium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium"], answer: "scientists" }
+            {
+              "category": "WHICH COUNTRY IS FAMOUS FOR THESE?",
+              "clues": ["Fjords", "Vikings", "Oslo", "Trolls", "Skiing"],
+              "answer": "norway"
+            },
+            {
+              "category": "WHICH MOVIE FRANCHISE ARE THESE CHARACTERS FROM?",
+              "clues": ["Frodo Baggins", "Gandalf", "Legolas", "Aragorn", "Sauron"],
+              "answer": "lord of the rings"
+            },
+            {
+              "category": "WHICH TECH COMPANY MAKES THESE PRODUCTS?",
+              "clues": ["Pixel", "Android", "Chromecast", "Nest", "Waymo"],
+              "answer": "google"
+            },
+            {
+              "category": "WHICH ANCIENT CIVILIZATION ARE THESE ASSOCIATED WITH?",
+              "clues": ["Hieroglyphs", "Pyramids", "Pharaohs", "The Nile", "Mummification"],
+              "answer": "egypt"
+            },
+            {
+              "category": "WHICH BAND PERFORMED THESE SONGS?",
+              "clues": ["Bohemian Rhapsody", "We Will Rock You", "Another One Bites the Dust", "Don't Stop Me Now", "Somebody to Love"],
+              "answer": "queen"
+            }
         ];
 
         let currentPuzzle;
@@ -326,5 +347,6 @@ This is bad because the category reveals the answer, and the clues are inconsist
     </script>
 </body>
 </html>
+
 
 
