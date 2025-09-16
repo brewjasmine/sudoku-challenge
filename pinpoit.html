@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinpoint Challenge | Bang Nguyen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .clue-box {
+            transition: all 0.5s ease;
+            transform-origin: top;
+        }
+        .clue-box.hidden-clue .clue-text {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        .clue-box.revealed .clue-text {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Loading Modal for AI Generation -->
+    <div id="loading-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0,0,0,0.7);">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+            <div class="loader mx-auto"></div>
+            <p class="mt-4 text-gray-600 font-semibold">Đang tạo câu đố mới cho hôm nay...</p>
+        </div>
+    </div>
+
+
+    <div id="game-container" class="w-full max-w-md mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-extrabold text-gray-800">Pinpoint Challenge</h1>
+            <p class="text-gray-500">A daily puzzle by Bang Nguyen</p>
+        </header>
+
+        <main class="bg-white rounded-xl shadow-lg p-6">
+            <div id="category" class="text-center mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider min-h-[20px]"></div>
+            
+            <div id="clues-container" class="space-y-2 mb-4">
+                <!-- Clues will be generated here -->
+            </div>
+
+            <button id="reveal-clue-button" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg mb-4 transition-colors">Lật mở gợi ý tiếp theo</button>
+            
+            <div id="feedback" class="text-center text-sm font-semibold mb-4 min-h-[20px]"></div>
+            
+            <div class="relative">
+                <input type="text" id="guess-input" placeholder="Nhập đáp án của bạn..." class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500" disabled>
+                <button id="guess-button" class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Đoán</button>
+            </div>
+            
+            <div id="wrong-guesses-container" class="mt-4 text-center text-xs text-gray-400 min-h-[16px]">
+                <!-- Wrong guesses will be shown here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="win-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0,0,0,0.7);">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-2 text-yellow-500">🎉 Đoán Đúng Rồi! 🎉</h2>
+            <p class="mb-4 text-gray-600">Bạn đã "pinpoint" thành công đáp án.</p>
+            <div class="bg-gray-100 rounded-lg p-4 mb-6">
+                <p class="text-sm text-gray-500">Kết quả của bạn:</p>
+                <p id="result-grid" class="text-3xl font-bold tracking-widest"></p>
+            </div>
+            <button id="share-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md mb-2 transition-colors">Sao chép & Chia sẻ</button>
+            <p class="text-xs text-gray-400">Câu đố mới sẽ có vào ngày mai!</p>
+        </div>
+    </div>
+    
+    <script>
+        // Fallback puzzles in case the API fails
+        const fallbackPuzzles = [
+            { category: "Things associated with THE NETHERLANDS", clues: ["Clogs", "Dikes", "Edam", "Windmills", "Tulips"], answer: "netherlands" },
+            { category: "Companies founded by STEVE JOBS", clues: ["Apple", "NeXT", "Pixar", "Macintosh", "iPhone"], answer: "steve jobs" },
+            { category: "Members of THE BEATLES", clues: ["John", "Paul", "George", "Ringo", "Liverpool"], answer: "the beatles" },
+            { category: "Things from LORD OF THE RINGS", clues: ["Hobbit", "Gollum", "Mordor", "Gandalf", "One Ring"], answer: "lord of the rings" },
+            { category: "Chemical elements named after SCIENTISTS", clues: ["Curium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium"], answer: "scientists" }
+        ];
+
+        let currentPuzzle;
+        let revealedCluesCount;
+        let wrongGuesses;
+        
+        const loadingModalEl = document.getElementById('loading-modal');
+        const categoryEl = document.getElementById('category');
+        const cluesContainerEl = document.getElementById('clues-container');
+        const feedbackEl = document.getElementById('feedback');
+        const guessInputEl = document.getElementById('guess-input');
+        const guessButtonEl = document.getElementById('guess-button');
+        const wrongGuessesEl = document.getElementById('wrong-guesses-container');
+        const winModalEl = document.getElementById('win-modal');
+        const resultGridEl = document.getElementById('result-grid');
+        const shareButtonEl = document.getElementById('share-button');
+        const revealClueButtonEl = document.getElementById('reveal-clue-button');
+
+        async function getDailyPuzzle() {
+            const today = new Date().toDateString();
+            const storedPuzzleData = localStorage.getItem('pinpointDailyPuzzle');
+
+            if (storedPuzzleData) {
+                const { date, puzzle } = JSON.parse(storedPuzzleData);
+                if (date === today) {
+                    console.log("Loading puzzle from cache for today.");
+                    return puzzle;
+                }
+            }
+            
+            console.log("Fetching new puzzle from Gemini API.");
+            loadingModalEl.classList.remove('hidden');
+            loadingModalEl.classList.add('flex');
+
+            try {
+                // Gemini API call logic
+                const apiKey = ""; // Leave empty, handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                // FIX: A much more robust and specific prompt to ensure logical consistency.
+                const systemPrompt = `You are a puzzle generator for a game called 'Pinpoint'. Your task is to create a single, high-quality puzzle in valid JSON format. Follow these rules strictly:
+1.  **The 'category' MUST be a question about the 'answer'.** For example, if the answer is "steve jobs", the category should be "WHICH TECH ICON?". If the answer is "the beatles", the category should be "WHICH BAND?".
+2.  **The 'answer' MUST be the single keyword or name that connects all clues.** It must be lowercase.
+3.  **The 5 'clues' MUST be logically consistent and of the same type.** For example, all clues should be companies, or all clues should be movie titles, or all clues should be people. Do not mix types.
+4.  All content must be in English.
+
+**Good Example:**
+{
+  "category": "WHICH COUNTRY?",
+  "clues": ["Clogs", "Dikes", "Edam", "Windmills", "Tulips"],
+  "answer": "netherlands"
+}
+
+**Bad Example (what to avoid):**
+{
+  "category": "Companies founded by STEVE JOBS", 
+  "clues": ["Apple", "NeXT", "Pixar", "Macintosh", "iPhone"],
+  "answer": "steve jobs"
+} 
+This is bad because the category reveals the answer, and the clues are inconsistent (companies vs. products).`;
+                
+                const userQuery = "Generate a new, high-quality Pinpoint puzzle that follows all the rules.";
+                
+                const payload = {
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "category": { "type": "STRING" },
+                                "clues": { "type": "ARRAY", "items": { "type": "STRING" } },
+                                "answer": { "type": "STRING" }
+                            },
+                            required: ["category", "clues", "answer"]
+                        }
+                    }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result.candidates[0].content.parts[0].text;
+                const newPuzzle = JSON.parse(jsonText);
+
+                localStorage.setItem('pinpointDailyPuzzle', JSON.stringify({ date: today, puzzle: newPuzzle }));
+                return newPuzzle;
+
+            } catch (error) {
+                console.error("Failed to fetch puzzle from Gemini API:", error);
+                // Fallback to the static list if the API fails
+                const fallbackIndex = new Date().getDate() % fallbackPuzzles.length;
+                return fallbackPuzzles[fallbackIndex];
+            } finally {
+                loadingModalEl.classList.add('hidden');
+                loadingModalEl.classList.remove('flex');
+            }
+        }
+
+        async function initGame() {
+            currentPuzzle = await getDailyPuzzle();
+            
+            revealedCluesCount = 1;
+            wrongGuesses = [];
+            
+            winModalEl.classList.add('hidden');
+            winModalEl.classList.remove('flex');
+            feedbackEl.textContent = '';
+            guessInputEl.value = '';
+            wrongGuessesEl.textContent = '';
+            guessInputEl.disabled = false;
+            guessButtonEl.disabled = false;
+
+            render();
+        }
+
+        function render() {
+            categoryEl.textContent = currentPuzzle.category;
+            cluesContainerEl.innerHTML = '';
+            
+            const colors = ["bg-blue-200", "bg-blue-300", "bg-blue-400", "bg-blue-500", "bg-blue-600"];
+
+            currentPuzzle.clues.forEach((clue, index) => {
+                const isRevealed = index < revealedCluesCount;
+                const clueDiv = document.createElement('div');
+                clueDiv.className = `clue-box ${colors[index]} p-4 rounded-lg text-center font-bold text-gray-800 ${isRevealed ? 'revealed' : 'hidden-clue'}`;
+                
+                const clueText = document.createElement('span');
+                clueText.className = 'clue-text transition-all duration-500';
+                clueText.textContent = isRevealed ? clue : `Gợi ý ${index + 1}`;
+                
+                clueDiv.appendChild(clueText);
+                cluesContainerEl.appendChild(clueDiv);
+            });
+
+            // Update reveal button state
+            if (revealedCluesCount >= 5) {
+                revealClueButtonEl.disabled = true;
+                revealClueButtonEl.textContent = "Đã hết gợi ý";
+                revealClueButtonEl.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                revealClueButtonEl.disabled = false;
+                revealClueButtonEl.textContent = "Lật mở gợi ý tiếp theo";
+                revealClueButtonEl.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function handleGuess() {
+            const guess = guessInputEl.value.trim().toLowerCase();
+            if (!guess) return;
+
+            if (guess === currentPuzzle.answer) {
+                winGame();
+            } else {
+                handleWrongGuess(guess);
+            }
+            guessInputEl.value = '';
+        }
+
+        function handleWrongGuess(guess) {
+            if (wrongGuesses.includes(guess)) return;
+            wrongGuesses.push(guess);
+            wrongGuessesEl.textContent = `Thử lại: ${wrongGuesses.join(', ')}`;
+            
+            feedbackEl.textContent = 'Không chính xác!';
+            feedbackEl.classList.add('text-red-600');
+            setTimeout(() => {
+                feedbackEl.textContent = '';
+                feedbackEl.classList.remove('text-red-600');
+            }, 1500);
+        }
+
+        function handleRevealClue() {
+            if (revealedCluesCount < 5) {
+                revealedCluesCount++;
+                render();
+            }
+        }
+
+        function winGame() {
+            let resultString = '';
+            for (let i = 0; i < 5; i++) {
+                resultString += (i < revealedCluesCount) ? '🟩' : '⬜️';
+            }
+            resultGridEl.textContent = resultString;
+            winModalEl.classList.remove('hidden');
+            winModalEl.classList.add('flex');
+            guessInputEl.disabled = true;
+            guessButtonEl.disabled = true;
+            revealClueButtonEl.disabled = true;
+        }
+
+        function shareResult() {
+            const shareText = `Tôi đã giải được Pinpoint Challenge! 🧠\n\nChủ đề: ${currentPuzzle.category}\nKết quả: ${resultGridEl.textContent}\n\nThử thách bản thân tại đây: [dán link game của bạn vào đây]`;
+            
+            navigator.clipboard.writeText(shareText).then(() => {
+                shareButtonEl.textContent = 'Đã sao chép!';
+                setTimeout(() => {
+                    shareButtonEl.textContent = 'Sao chép & Chia sẻ';
+                }, 2000);
+            });
+        }
+
+        guessButtonEl.addEventListener('click', handleGuess);
+        guessInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleGuess();
+            }
+        });
+        
+        revealClueButtonEl.addEventListener('click', handleRevealClue);
+        shareButtonEl.addEventListener('click', shareResult);
+
+        initGame();
+    </script>
+</body>
+</html>
+
+
