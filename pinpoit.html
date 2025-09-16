@@ -63,7 +63,12 @@
                 <!-- Clues will be generated here -->
             </div>
 
-            <button id="reveal-clue-button" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg mb-4 transition-colors">Lật mở gợi ý tiếp theo</button>
+            <!-- Action Buttons Container -->
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button id="reveal-clue-button" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors">Lật mở gợi ý</button>
+                <!-- NEW: Show Answer Button -->
+                <button id="show-answer-button" class="w-full bg-orange-200 hover:bg-orange-300 text-orange-800 font-bold py-2 px-4 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>Hiển thị đáp án</button>
+            </div>
             
             <div id="feedback" class="text-center text-sm font-semibold mb-4 min-h-[20px]"></div>
             
@@ -94,16 +99,8 @@
     
     <script>
         const fallbackPuzzles = [
-            {
-              "category": "QUỐC GIA NÀO NỔI TIẾNG VỚI NHỮNG THỨ NÀY?",
-              "clues": ["Kim tự tháp", "Pharaoh", "Sông Nile", "Xác ướp", "Chữ tượng hình"],
-              "answer": "ai cập"
-            },
-            {
-              "category": "NHÂN VẬT LỊCH SỬ NÀO?",
-              "clues": ["Thống nhất đất nước", "Hoàng đế đầu tiên", "Chống quân Nam Hán", "Trận Bạch Đằng", "Xưng vương"],
-              "answer": "ngô quyền"
-            }
+            { "category": "QUỐC GIA NÀO?", "clues": ["Phở", "Áo dài", "Hà Nội", "Nón lá", "Vịnh Hạ Long"], "answer": "việt nam" },
+            { "category": "NHÂN VẬT LỊCH SỬ NÀO?", "clues": ["Thống nhất đất nước", "Hoàng đế đầu tiên", "Chống quân Nam Hán", "Trận Bạch Đằng", "Xưng vương"], "answer": "ngô quyền" }
         ];
 
         let currentPuzzle;
@@ -122,51 +119,31 @@
         const shareButtonEl = document.getElementById('share-button');
         const revealClueButtonEl = document.getElementById('reveal-clue-button');
         const playAgainButtonEl = document.getElementById('play-again-button');
+        const showAnswerButtonEl = document.getElementById('show-answer-button'); // NEW: Get the answer button
 
         async function getNewPuzzle() {
-            console.log("Fetching new puzzle from Gemini API.");
             loadingModalEl.classList.remove('hidden');
             loadingModalEl.classList.add('flex');
-
             try {
                 const apiKey = "AIzaSyAdQojSqdgD3qollJhmSl-3emR88k7H9gQ"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                
-                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra MỘT câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung (category, clues, answer) PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau:
-1.  **'category' (chủ đề) PHẢI là một câu hỏi về 'answer' (đáp án).** Ví dụ: nếu đáp án là "sơn tùng mtp", chủ đề phải là "CA SĨ NÀO?".
-2.  **'answer' (đáp án) PHẢI là từ khóa hoặc tên riêng duy nhất kết nối tất cả các gợi ý.** Phải là chữ thường, không dấu.
-3.  **5 'clues' (gợi ý) PHẢI nhất quán về mặt logic và cùng một loại.** Ví dụ: tất cả đều là bài hát, hoặc tất cả đều là thành phố.
-4.  **Tất cả nội dung phải là tiếng Việt.**
-
-**Ví dụ Tốt:**
-{
-  "category": "QUỐC GIA NÀO?",
-  "clues": ["Phở", "Áo dài", "Hà Nội", "Nón lá", "Vịnh Hạ Long"],
-  "answer": "viet nam"
-}`;
-                
+                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra MỘT câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung (category, clues, answer) PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau: 1. **'category' (chủ đề) PHẢI là một câu hỏi về 'answer' (đáp án).** Ví dụ: nếu đáp án là "sơn tùng mtp", chủ đề phải là "CA SĨ NÀO?". 2. **'answer' (đáp án) PHẢI là từ khóa hoặc tên riêng duy nhất kết nối tất cả các gợi ý.** Phải là chữ thường, không dấu. 3. **5 'clues' (gợi ý) PHẢI nhất quán về mặt logic và cùng một loại.** Ví dụ: tất cả đều là bài hát, hoặc tất cả đều là thành phố. 4. **Tất cả nội dung phải là tiếng Việt.**`;
                 const userQuery = "Tạo một câu đố Pinpoint mới, chất lượng cao và tuân thủ tất cả các quy tắc.";
-                
                 const payload = {
                     systemInstruction: { parts: [{ text: systemPrompt }] },
                     contents: [{ parts: [{ text: userQuery }] }],
                     generationConfig: {
                         responseMimeType: "application/json",
-                        responseSchema: {
-                            type: "OBJECT", properties: { "category": { "type": "STRING" }, "clues": { "type": "ARRAY", "items": { "type": "STRING" } }, "answer": { "type": "STRING" } },
-                            required: ["category", "clues", "answer"]
-                        }
+                        responseSchema: { type: "OBJECT", properties: { "category": { "type": "STRING" }, "clues": { "type": "ARRAY", "items": { "type": "STRING" } }, "answer": { "type": "STRING" } }, required: ["category", "clues", "answer"] }
                     }
                 };
-
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
                 const result = await response.json();
                 return JSON.parse(result.candidates[0].content.parts[0].text);
             } catch (error) {
                 console.error("Failed to fetch puzzle from Gemini API:", error);
-                const fallbackIndex = Math.floor(Math.random() * fallbackPuzzles.length);
-                return fallbackPuzzles[fallbackIndex];
+                return fallbackPuzzles[Math.floor(Math.random() * fallbackPuzzles.length)];
             } finally {
                 loadingModalEl.classList.add('hidden');
                 loadingModalEl.classList.remove('flex');
@@ -205,8 +182,17 @@
                 clueText.textContent = isRevealed ? clue : `Gợi ý ${index + 1}`;
                 clueDiv.appendChild(clueText); cluesContainerEl.appendChild(clueDiv);
             });
-            if(revealedCluesCount>=5){revealClueButtonEl.disabled=true;revealClueButtonEl.textContent="Đã hết gợi ý";revealClueButtonEl.classList.add('opacity-50','cursor-not-allowed');}
-            else{revealClueButtonEl.disabled=false;revealClueButtonEl.textContent="Lật mở gợi ý tiếp theo";revealClueButtonEl.classList.remove('opacity-50','cursor-not-allowed');}
+            
+            // Update reveal and answer button states
+            if(revealedCluesCount >= 5){
+                revealClueButtonEl.disabled=true; revealClueButtonEl.textContent="Đã hết gợi ý"; revealClueButtonEl.classList.add('opacity-50','cursor-not-allowed');
+                // NEW: Enable show answer button
+                showAnswerButtonEl.disabled = false; showAnswerButtonEl.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                revealClueButtonEl.disabled=false; revealClueButtonEl.textContent="Lật mở gợi ý"; revealClueButtonEl.classList.remove('opacity-50','cursor-not-allowed');
+                // NEW: Disable show answer button
+                showAnswerButtonEl.disabled = true; showAnswerButtonEl.classList.add('opacity-50', 'cursor-not-allowed');
+            }
         }
 
         function handleGuess() {
@@ -230,16 +216,27 @@
 
         function handleRevealClue() { if (revealedCluesCount < 5) { revealedCluesCount++; render(); } }
 
+        // NEW: Function to handle showing the answer
+        function handleShowAnswer() {
+            feedbackEl.innerHTML = `Đáp án là: <strong class="capitalize">${currentPuzzle.answer}</strong>`;
+            feedbackEl.classList.add('text-green-600');
+            guessInputEl.disabled = true;
+            guessButtonEl.disabled = true;
+            revealClueButtonEl.disabled = true;
+            showAnswerButtonEl.disabled = true;
+        }
+
         function winGame() {
             let resultString = '';
             for (let i = 0; i < 5; i++) { resultString += (i < revealedCluesCount) ? '🟩' : '⬜️'; }
             resultGridEl.textContent = resultString;
             winModalEl.classList.remove('hidden'); winModalEl.classList.add('flex');
             guessInputEl.disabled = true; guessButtonEl.disabled = true; revealClueButtonEl.disabled = true;
+            showAnswerButtonEl.disabled = true;
         }
 
         function shareResult() {
-            const shareText = `Tôi đã giải được Thử Thách Pinpoint! 🧠\n\nChủ đề: ${currentPuzzle.category}\nKết quả: ${resultGridEl.textContent}\n\nThử thách bản thân tại đây: https://brewjasmine.github.io/sudoku-challenge/pinpoint.html`; // FIX: Corrected typo from "pinpoit" to "pinpoint"
+            const shareText = `Tôi đã giải được Thử Thách Pinpoint! 🧠\n\nChủ đề: ${currentPuzzle.category}\nKết quả: ${resultGridEl.textContent}\n\nThử thách bản thân tại đây: https://brewjasmine.github.io/sudoku-challenge/pinpoint.html`;
             navigator.clipboard.writeText(shareText).then(() => {
                 shareButtonEl.textContent = 'Đã sao chép!';
                 setTimeout(() => { shareButtonEl.textContent = 'Sao chép & Chia sẻ'; }, 2000);
@@ -251,11 +248,10 @@
         revealClueButtonEl.addEventListener('click', handleRevealClue);
         shareButtonEl.addEventListener('click', shareResult);
         playAgainButtonEl.addEventListener('click', initGame);
+        showAnswerButtonEl.addEventListener('click', handleShowAnswer); // NEW: Add event listener
 
         initGame();
     </script>
 </body>
 </html>
-
-
 
