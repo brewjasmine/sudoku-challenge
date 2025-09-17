@@ -45,7 +45,7 @@
     <div id="loading-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background-color: rgba(0,0,0,0.7);">
         <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm text-center">
             <div class="loader mx-auto"></div>
-            <p class="mt-4 text-gray-600 font-semibold">Đang tạo câu đố mới...</p>
+            <p class="mt-4 text-gray-600 font-semibold">Đang tạo bộ câu đố mới...</p>
         </div>
     </div>
 
@@ -101,12 +101,21 @@
     <script>
         const fallbackPuzzles = [
             { "category": "QUỐC GIA NÀO?", "clues": ["Phở", "Áo dài", "Hà Nội", "Nón lá", "Vịnh Hạ Long"], "answer": "việt nam" },
-            { "category": "NHÂN VẬT LỊCH SỬ NÀO?", "clues": ["Thống nhất đất nước", "Hoàng đế đầu tiên", "Chống quân Nam Hán", "Trận Bạch Đằng", "Xưng vương"], "answer": "ngô quyền" }
+            { "category": "NHÂN VẬT LỊCH SỬ NÀO?", "clues": ["Thống nhất đất nước", "Hoàng đế đầu tiên", "Chống quân Nam Hán", "Trận Bạch Đằng", "Xưng vương"], "answer": "ngô quyền" },
+            { "category": "MÓN ĂN NÀO CỦA HÀ NỘI?", "clues": ["Thịt nướng", "Bún rối", "Nước mắm chua ngọt", "Chả viên", "Rau sống"], "answer": "bún chả" },
+            { "category": "ĐẠI THI HÀO NÀO CỦA VIỆT NAM?", "clues": ["Truyện Kiều", "Tố Như", "Văn học chữ Nôm", "Nghi Xuân", "Nguyễn tộc"], "answer": "nguyễn du" },
+            { "category": "THÀNH PHỐ NÀO Ở VIỆT NAM?", "clues": ["Cầu Rồng", "Bà Nà Hills", "Ngũ Hành Sơn", "Sông Hàn", "Biển Mỹ Khê"], "answer": "đà nẵng" },
+            { "category": "BAN NHẠC ROCK NÀO CỦA VIỆT NAM?", "clues": ["Trần Lập", "Tâm hồn của đá", "Bông hồng thủy tinh", "Rock Việt", "Ngày khác"], "answer": "bức tường" },
+            { "category": "BỘ PHIM NÀO CỦA VIỆT NAM?", "clues": ["Victor Vũ", "Nguyễn Nhật Ánh", "Trúc Anh", "Ngạn", "Hà Lan"], "answer": "mắt biếc" },
+            { "category": "MẠNG XÃ HỘI NÀO?", "clues": ["Mark Zuckerberg", "Meta", "Nút 'Thích'", "Bảng tin (News Feed)", "Màu xanh dương"], "answer": "facebook" },
+            { "category": "CÔNG TY CÔNG NGHỆ NÀO CỦA VIỆT NAM?", "clues": ["Trương Gia Bình", "Viễn thông", "Phần mềm", "Giáo dục", "Tòa nhà hình con thuyền"], "answer": "fpt" },
+            { "category": "DI SẢN THIÊN NHIÊN THẾ GIỚI NÀO?", "clues": ["Quảng Bình", "Hang động", "Thạch nhũ", "Sông Son", "Vườn quốc gia"], "answer": "phong nha kẻ bàng" }
         ];
 
         let currentPuzzle;
         let revealedCluesCount;
         let wrongGuesses;
+        let puzzleCache = [];
         
         const loadingModalEl = document.getElementById('loading-modal');
         const categoryEl = document.getElementById('category');
@@ -124,33 +133,48 @@
         const nextPuzzleButtonEl = document.getElementById('next-puzzle-button');
         const actionButtonsEl = document.getElementById('action-buttons');
 
-        async function getNewPuzzle() {
+        async function fetchPuzzleBatch() {
+            console.log("Fetching new batch of puzzles from Gemini API.");
             loadingModalEl.classList.remove('hidden');
             loadingModalEl.classList.add('flex');
             try {
                 const apiKey = "AIzaSyAdQojSqdgD3qollJhmSl-3emR88k7H9gQ"; 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra MỘT câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung (category, clues, answer) PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau: 1. **'category' (chủ đề) PHẢI là một câu hỏi về 'answer' (đáp án).** Ví dụ: nếu đáp án là "sơn tùng mtp", chủ đề phải là "CA SĨ NÀO?". 2. **'answer' (đáp án) PHẢI là từ khóa hoặc tên riêng duy nhất kết nối tất cả các gợi ý.** Phải là chữ thường, có dấu đầy đủ. 3. **5 'clues' (gợi ý) PHẢI nhất quán về mặt logic và cùng một loại.** Ví dụ: tất cả đều là bài hát, hoặc tất cả đều là thành phố. 4. **Tất cả nội dung phải là tiếng Việt.**`;
-                const userQuery = "Tạo một câu đố Pinpoint mới, chất lượng cao và tuân thủ tất cả các quy tắc.";
+                const systemPrompt = `Bạn là một người tạo câu đố cho trò chơi 'Pinpoint'. Nhiệm vụ của bạn là tạo ra một MẢNG chứa 10 câu đố chất lượng cao ở định dạng JSON hợp lệ. Toàn bộ nội dung PHẢI LÀ TIẾNG VIỆT. Tuân thủ nghiêm ngặt các quy tắc sau cho MỖI câu đố: 1. 'category' PHẢI là một câu hỏi. 2. 'answer' PHẢI là chữ thường, có dấu. 3. 5 'clues' PHẢI nhất quán về loại. 4. **ĐỘ KHÓ:** Các gợi ý nên bắt đầu từ những chi tiết ít rõ ràng, mang tính liên tưởng và tăng dần độ trực tiếp ở các gợi ý cuối cùng để tạo ra thử thách cho người chơi.`;
+                const userQuery = "Tạo một bộ 10 câu đố Pinpoint mới, chất lượng cao và tuân thủ tất cả các quy tắc.";
                 const payload = {
                     systemInstruction: { parts: [{ text: systemPrompt }] },
                     contents: [{ parts: [{ text: userQuery }] }],
                     generationConfig: {
                         responseMimeType: "application/json",
-                        responseSchema: { type: "OBJECT", properties: { "category": { "type": "STRING" }, "clues": { "type": "ARRAY", "items": { "type": "STRING" } }, "answer": { "type": "STRING" } }, required: ["category", "clues", "answer"] }
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: { "category": { "type": "STRING" }, "clues": { "type": "ARRAY", "items": { "type": "STRING" } }, "answer": { "type": "STRING" } },
+                                required: ["category", "clues", "answer"]
+                            }
+                        }
                     }
                 };
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
                 const result = await response.json();
-                return JSON.parse(result.candidates[0].content.parts[0].text);
+                puzzleCache = JSON.parse(result.candidates[0].content.parts[0].text);
             } catch (error) {
-                console.error("Failed to fetch puzzle from Gemini API:", error);
-                return fallbackPuzzles[Math.floor(Math.random() * fallbackPuzzles.length)];
+                console.error("Failed to fetch puzzle batch from Gemini API:", error);
+                puzzleCache = fallbackPuzzles; // Use fallback if API fails
             } finally {
                 loadingModalEl.classList.add('hidden');
                 loadingModalEl.classList.remove('flex');
             }
+        }
+
+        async function getNextPuzzle() {
+            if (puzzleCache.length === 0) {
+                await fetchPuzzleBatch();
+            }
+            return puzzleCache.shift() || fallbackPuzzles[0]; 
         }
 
         function levenshteinDistance(a, b) {
@@ -168,7 +192,7 @@
         }
 
         async function initGame() {
-            currentPuzzle = await getNewPuzzle();
+            currentPuzzle = await getNextPuzzle();
             revealedCluesCount = 1; wrongGuesses = [];
             winModalEl.classList.add('hidden'); winModalEl.classList.remove('flex');
             feedbackEl.textContent = ''; guessInputEl.value = ''; wrongGuessesEl.textContent = '';
@@ -238,8 +262,8 @@
             winModalEl.classList.remove('hidden'); winModalEl.classList.add('flex');
             guessInputEl.disabled = true;
             guessButtonEl.disabled = true;
-            revealClueButtonEl.disabled = true;
-            showAnswerButtonEl.disabled = true;
+            actionButtonsEl.classList.add('hidden');
+            nextPuzzleButtonEl.classList.remove('hidden'); // Show Next Puzzle button after winning too
         }
 
         function shareResult() {
@@ -253,8 +277,16 @@
         guessButtonEl.addEventListener('click', handleGuess);
         guessInputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleGuess(); });
         revealClueButtonEl.addEventListener('click', handleRevealClue);
-        shareButtonEl.addEventListener('click', shareResult);
-        playAgainButtonEl.addEventListener('click', initGame);
+        shareButtonEl.addEventListener('click', ()=>{
+             winModalEl.classList.add('hidden');
+             winModalEl.classList.remove('flex');
+             shareResult();
+        });
+        playAgainButtonEl.addEventListener('click', ()=>{
+            winModalEl.classList.add('hidden');
+             winModalEl.classList.remove('flex');
+            initGame();
+        });
         showAnswerButtonEl.addEventListener('click', handleShowAnswer);
         nextPuzzleButtonEl.addEventListener('click', initGame);
 
@@ -262,4 +294,5 @@
     </script>
 </body>
 </html>
+
 
